@@ -66,9 +66,13 @@ class PluginExtraFields(models.Model):
         verbose_name = verbose_name_plural = _("Custom CSS classes and styles")
         unique_together = ('plugin_type', 'site')
 
-    CUSTOMIZABLE_PLUGINS = _plugins_for_site()
-    plugin_type = models.CharField(_("Plugin Name"), max_length=50, db_index=True, choices=CUSTOMIZABLE_PLUGINS)
+    plugin_type = models.CharField(_("Plugin Name"), max_length=50, db_index=True, choices=None)
     site = models.ForeignKey(Site, verbose_name=_("Site"))
     allow_id_tag = models.BooleanField(default=False)
     css_classes = JSONField(null=True, blank=True, default={})
     inline_styles = JSONField(null=True, blank=True, default={})
+
+    def __init__(self, *args, **kwargs):
+        super(PluginExtraFields, self).__init__(*args, **kwargs)
+        self.fields['plugin_type'].choices = _plugins_for_site()
+
