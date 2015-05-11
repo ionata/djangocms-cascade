@@ -43,6 +43,7 @@ INSTALLED_APPS = (
     'cmsplugin_cascade.extra_fields',
     'cmsplugin_cascade.sharable',
     'cms',
+    'cms_bootstrap3',
     'menus',
     CMS_VERSION >= (3, 1) and 'treebeard' or 'mptt',
     'filer',
@@ -50,7 +51,7 @@ INSTALLED_APPS = (
     'sekizai',
     'bs3demo',
 )
-if django.VERSION[:2] > (1, 6):
+if django.VERSION[:2] >= (1, 7):
     MIGRATION_MODULES = {
         'cms': 'cms.migrations_django',
         'menus': 'menus.migrations_django',
@@ -174,8 +175,6 @@ CMSPLUGIN_CASCADE_WITH_SHARABLES = {
     'BootstrapButtonPlugin': ('link',),
     'TextLinkPlugin': ('link', 'target',),
 }
-
-CMSPLUGIN_CASCADE_LEAF_PLUGINS = ('TextLinkPlugin',)
 
 COLUMN_GLOSSARY = {
     'breakpoints': ['xs', 'sm', 'md', 'lg'],

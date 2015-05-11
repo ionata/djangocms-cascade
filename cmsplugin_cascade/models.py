@@ -16,14 +16,14 @@ class SharedGlossary(models.Model):
     """
     A model class to hold glossary data shared among different plugins.
     """
+    plugin_type = models.CharField(_("Plugin Name"), max_length=50, db_index=True, editable=False)
+    identifier = models.CharField(_("Identifier"), max_length=50, unique=True)
+    glossary = JSONField(null=True, blank=True, default={})
+
     class Meta:
         app_label = 'cmsplugin_cascade'
         unique_together = ('plugin_type', 'identifier')
         verbose_name_plural = verbose_name = _("Shared between Plugins")
-
-    plugin_type = models.CharField(_("Plugin Name"), max_length=50, db_index=True, editable=False)
-    identifier = models.CharField(_("Identifier"), max_length=50, unique=True)
-    glossary = JSONField(null=True, blank=True, default={})
 
     def __str__(self):
         return self.identifier
@@ -39,11 +39,11 @@ class SharableCascadeElement(CascadeModelBase):
     """
     A model class with an additional foreign key to a shared glossary.
     """
+    shared_glossary = models.ForeignKey(SharedGlossary, blank=True, null=True, on_delete=models.SET_NULL)
+
     class Meta:
         app_label = 'cmsplugin_cascade'
         db_table = 'cmsplugin_cascade_sharableelement'
-
-    shared_glossary = models.ForeignKey(SharedGlossary, blank=True, null=True, on_delete=models.SET_NULL)
 
     def __getattribute__(self, name):
         """
@@ -55,24 +55,26 @@ class SharableCascadeElement(CascadeModelBase):
         return attribute
 
 
-def _plugins_for_site():
-    cascade_plugins = set([p for p in plugin_pool.get_all_plugins() if issubclass(p, ExtraFieldsMixin)])
-    return [(p.__name__, '{0} {1}'.format(force_text(p.module), force_text(p.name))) for p in cascade_plugins]
-
-
 class PluginExtraFields(models.Model):
-    class Meta:
-        app_label = 'cmsplugin_cascade'
-        verbose_name = verbose_name_plural = _("Custom CSS classes and styles")
-        unique_together = ('plugin_type', 'site')
-
-    plugin_type = models.CharField(_("Plugin Name"), max_length=50, db_index=True, choices=None)
+    """
+    Store a set of allowed extra CSS classes and inline styles to be used for Cascade plugins
+    inheriting from `ExtraFieldsMixin`. Also store if individual ``id=""`` tags are allowed.
+    """
+    plugin_type = models.CharField(_("Plugin Name"), max_length=50, db_index=True)
     site = models.ForeignKey(Site, verbose_name=_("Site"))
     allow_id_tag = models.BooleanField(default=False)
     css_classes = JSONField(null=True, blank=True, default={})
     inline_styles = JSONField(null=True, blank=True, default={})
 
-    def __init__(self, *args, **kwargs):
-        super(PluginExtraFields, self).__init__(*args, **kwargs)
-        self.fields['plugin_type'].choices = _plugins_for_site()
+    class Meta:
+        app_label = 'cmsplugin_cascade'
+        verbose_name = verbose_name_plural = _("Custom CSS classes and styles")
+        unique_together = ('plugin_type', 'site')
+
+
+class Segmentation(models.Model):
+    class Meta:
+        app_label = 'cmsplugin_cascade'
+        verbose_name = verbose_name_plural = _("Segmentation")
+        managed = False  # its a dummy model
 

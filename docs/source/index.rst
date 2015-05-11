@@ -38,10 +38,11 @@ Contents:
   bootstrap3/grid
   bootstrap3/image-picture
   bootstrap3/navbar
+  segmentation
   sharable-fields
   customize-styles
   customized-plugins
-  history
+  changelog
 
 Indices and tables
 ==================

@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 import re
+from django.core.exceptions import ValidationError
 from django.contrib import admin
+from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 from django.forms import widgets
-from django.core.exceptions import ValidationError
+from cms.plugin_pool import plugin_pool
 from cmsplugin_cascade.fields import PartialFormField
 from cmsplugin_cascade.models import PluginExtraFields
+from cmsplugin_cascade.extra_fields.mixins import ExtraFieldsMixin
 from cmsplugin_cascade.widgets import JSONMultiWidget, MultipleCascadingSizeWidget
 from cmsplugin_cascade.utils import rectify_partial_form_field
-from .mixins import ExtraFieldsMixin
+from cmsplugin_cascade.settings import CASCADE_EXTRA_INLINE_STYLES
 
 
 class ClassNamesWidget(widgets.TextInput):
@@ -51,7 +54,7 @@ class PluginExtraFieldsAdmin(admin.ModelAdmin):
     def __init__(self, model, admin_site):
         super(PluginExtraFieldsAdmin, self).__init__(model, admin_site)
         self.style_fields = []
-        for style, choices_tuples in ExtraFieldsMixin.EXTRA_INLINE_STYLES.items():
+        for style, choices_tuples in CASCADE_EXTRA_INLINE_STYLES.items():
             extra_field = PartialFormField('extra_fields:{0}'.format(style),
                 widgets.CheckboxSelectMultiple(choices=((c, c) for c in choices_tuples[0])),
                 label=_("Customized {0} Fields:").format(style),
@@ -69,12 +72,21 @@ class PluginExtraFieldsAdmin(admin.ModelAdmin):
             else:
                 self.style_fields.append(extra_field)
 
+    def plugins_for_site(self):
+        if not hasattr(self, '_plugins_for_site'):
+            cascade_plugins = set([p for p in plugin_pool.get_all_plugins() if issubclass(p, ExtraFieldsMixin)])
+            self._plugins_for_site = [(p.__name__, '{} {}'.format(p.module, force_text(p.name))) for p in cascade_plugins]
+        return self._plugins_for_site
+
     def get_form(self, request, obj=None, **kwargs):
         """
         Build the form used for changing the model.
         """
-        kwargs.update(widgets={'css_classes': JSONMultiWidget(self.classname_fields),
-            'inline_styles': JSONMultiWidget(self.style_fields)})
+        kwargs.update(widgets={
+            'plugin_type': widgets.Select(choices=self.plugins_for_site()),
+            'css_classes': JSONMultiWidget(self.classname_fields),
+            'inline_styles': JSONMultiWidget(self.style_fields)
+        })
         form = super(PluginExtraFieldsAdmin, self).get_form(request, obj, **kwargs)
         rectify_partial_form_field(form.base_fields['css_classes'], self.classname_fields)
         setattr(form, 'classname_fields', self.classname_fields)
@@ -86,6 +98,6 @@ class PluginExtraFieldsAdmin(admin.ModelAdmin):
         """
         Only if at least one plugin uses the class ExtraFieldsMixin, allow to add an instance.
         """
-        return len(PluginExtraFields.CUSTOMIZABLE_PLUGINS) > 0
+        return len(self.plugins_for_site()) > 0
 
 admin.site.register(PluginExtraFields, PluginExtraFieldsAdmin)
